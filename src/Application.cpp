@@ -1,13 +1,13 @@
-#include "Application.h"
+#include <application.hpp>
 #include <stdio.h>
 #include <iostream>
 
-Application::Application() : m_IsRunning(false),
-                             m_SDLWindow(nullptr),
-							 m_DeltaTime(0), 
-							 m_LastDeltaTime(0),
-							 m_Width(800),
-							 m_Height(600)
+Application::Application() : m_is_running(false),
+                             m_sdl_window(nullptr),
+							 m_delta_time(0), 
+							 m_last_delta_time(0),
+							 m_width(800),
+							 m_height(600)
 {
     printf("Initializing..\n");
 }
@@ -17,95 +17,95 @@ Application::~Application()
     
 }
 
-int Application::Run(int argc, char* argv[])
+int Application::run(int argc, char* argv[])
 {
-    if(!_Init())
+    if(!_initialize())
         return 1;
 
-    while (m_IsRunning)
+    while (m_is_running)
     {
-        _Frame();
+        _frame();
     }
     
-    _Shutdown();
+    _shutdown();
     
     return 0;
 }
 
-void Application::_Frame()
+void Application::_frame()
 {
-	_ClearScreen(0, 0, 0, 255);
-    _EventLoop();
+	_clear_screen(0, 0, 0, 255);
+    _event_loop();
 
-	Frame();
+	frame();
 
-	_UpdateDeltaTime();
-	_Present();
+	_update_delta_time();
+	_present();
 }
 
-void Application::_UpdateDeltaTime()
+void Application::_update_delta_time()
 {
 	uint32_t ticks = SDL_GetTicks();
-	m_DeltaTime = ticks - m_LastDeltaTime;
-	m_LastDeltaTime = ticks;
+	m_delta_time = ticks - m_last_delta_time;
+	m_last_delta_time = ticks;
 
-	RenderText(std::to_string(m_DeltaTime) + "ms", 8, 8);
+	render_text(std::to_string(m_delta_time) + "ms", 8, 8);
 }
 
-void Application::_ClearScreen(uint8_t r, uint8_t b, uint8_t g, uint8_t a)
+void Application::_clear_screen(uint8_t r, uint8_t b, uint8_t g, uint8_t a)
 {
-	SDL_SetRenderDrawColor(m_SDLRenderer, r, b, g, a);
-	SDL_RenderClear(m_SDLRenderer);
+	SDL_SetRenderDrawColor(m_sdl_renderer, r, b, g, a);
+	SDL_RenderClear(m_sdl_renderer);
 }
 
-void Application::_Present()
+void Application::_present()
 {
-	SDL_RenderPresent(m_SDLRenderer);
+	SDL_RenderPresent(m_sdl_renderer);
 }
 
-bool Application::_Init()
+bool Application::_initialize()
 {
     Uint32 flags = SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_HAPTIC | SDL_INIT_JOYSTICK;
     
     if (SDL_Init(flags) != 0)
         return false;
     
-    m_SDLWindow = SDL_CreateWindow("Software Rasterizer | Dihara Wijetunga (c) 2018",
+	m_sdl_window = SDL_CreateWindow("Software Rasterizer | Dihara Wijetunga (c) 2018",
                                SDL_WINDOWPOS_CENTERED,
                                SDL_WINDOWPOS_CENTERED,
-							   m_Width,
-                               m_Height,
+							   m_width,
+							   m_height,
 							   SDL_WINDOW_OPENGL);
-    if (!m_SDLWindow)
+    if (!m_sdl_window)
         return false;
     
-	m_SDLRenderer = SDL_CreateRenderer(m_SDLWindow, -1, SDL_RENDERER_ACCELERATED);
-	m_SDLBackBuffer = SDL_CreateTexture(m_SDLRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, m_Width, m_Height);
+	m_sdl_renderer = SDL_CreateRenderer(m_sdl_window, -1, SDL_RENDERER_ACCELERATED);
+	m_sdl_backbuffer = SDL_CreateTexture(m_sdl_renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, m_width, m_height);
 
 	TTF_Init();
-	m_TTFFont = TTF_OpenFont("fonts/DroidSans.ttf", 20);
+	m_ttf_font = TTF_OpenFont("fonts/DroidSans.ttf", 20);
 
-	if (!Init())
+	if (!initialize())
 		return false;
 	
-	m_IsRunning = true;
+	m_is_running = true;
     return true;
 }
 
-void Application::_Shutdown()
+void Application::_shutdown()
 {
-	Shutdown();
+	shutdown();
 
-	TTF_CloseFont(m_TTFFont);
-	SDL_DestroyTexture(m_SDLBackBuffer);
-	SDL_DestroyRenderer(m_SDLRenderer);
-    SDL_DestroyWindow(m_SDLWindow);
+	TTF_CloseFont(m_ttf_font);
+	SDL_DestroyTexture(m_sdl_backbuffer);
+	SDL_DestroyRenderer(m_sdl_renderer);
+    SDL_DestroyWindow(m_sdl_window);
 
 	TTF_Quit();
 	SDL_Quit();
 }
 
-void Application::_EventLoop()
+void Application::_event_loop()
 {
     SDL_Event event;
     
@@ -140,7 +140,7 @@ void Application::_EventLoop()
             }
                 
             case SDL_QUIT:
-                m_IsRunning = false;
+				m_is_running = false;
                 break;
                 
             default:
@@ -149,22 +149,22 @@ void Application::_EventLoop()
     }
 }
 
-void Application::RenderText(const std::string& text, int x, int y)
+void Application::render_text(const std::string& text, int x, int y)
 {
 	SDL_Color color = { 128, 128, 128 };
-	SDL_Surface * surface = TTF_RenderText_Blended(m_TTFFont, text.c_str(), color);
-	SDL_Texture * texture = SDL_CreateTextureFromSurface(m_SDLRenderer, surface);
+	SDL_Surface * surface = TTF_RenderText_Blended(m_ttf_font, text.c_str(), color);
+	SDL_Texture * texture = SDL_CreateTextureFromSurface(m_sdl_renderer, surface);
 	int texW = 0;
 	int texH = 0;
 	SDL_QueryTexture(texture, NULL, NULL, &texW, &texH);
 	SDL_Rect dstrect = { x, y, texW, texH };
-	SDL_RenderCopy(m_SDLRenderer, texture, NULL, &dstrect);
+	SDL_RenderCopy(m_sdl_renderer, texture, NULL, &dstrect);
 	SDL_DestroyTexture(texture);
 	SDL_FreeSurface(surface);
 }
 
-void Application::UpdateBackBuffer(void* pixels)
+void Application::update_backbuffer(void* pixels)
 {
-	SDL_UpdateTexture(m_SDLBackBuffer, NULL, pixels, m_Width * sizeof(uint32_t));
-	SDL_RenderCopy(m_SDLRenderer, m_SDLBackBuffer, NULL, NULL);
+	SDL_UpdateTexture(m_sdl_backbuffer, NULL, pixels, m_width * sizeof(uint32_t));
+	SDL_RenderCopy(m_sdl_renderer, m_sdl_backbuffer, NULL, NULL);
 }

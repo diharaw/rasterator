@@ -30,6 +30,8 @@
 *.out
 *.app
 
+external/*
+external/
 build/*
 build/
 bin/
