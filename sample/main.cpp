@@ -160,8 +160,9 @@ private:
 #else
 	float edge_function(const vec3f &a, const vec3f &b, const vec3f &c)
 	{
-		return (c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0]);
+		//return (c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0]);
 		//return (a.x - b.x)*(c.y - a.y) - (a.y - b.y)*(c.x - a.x);
+		return (b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x);
 	}
 
 	//vec3f barycentric(const vec3f& a, const vec3f& b, const vec3f& c, const vec3f& p)
@@ -184,15 +185,9 @@ private:
 
 	vec3f barycentric(vec3f v0, vec3f v1, vec3f v2, vec3f p)
 	{
-		vec3f pixelsample(p.x + 0.5, p.y + 0.5, 0);
-
-		v0.z = 1 / v0.z,
-		v1.z = 1 / v1.z,
-		v2.z = 1 / v2.z;
-
-		float w0 = edge_function(v1, v2, pixelsample);
-		float w1 = edge_function(v2, v0, pixelsample);
-		float w2 = edge_function(v0, v1, pixelsample);
+		float w0 = edge_function(v1, v2, p);
+		float w1 = edge_function(v2, v0, p);
+		float w2 = edge_function(v0, v1, p);
 
 		return vec3f(w0, w1, w2);
 	}
@@ -229,8 +224,8 @@ private:
 
 				P.z = pts[0].z * bc_screen[0] + pts[1].z * bc_screen[1] + pts[2].z * bc_screen[2];*/
 
-				vec3f bc_screen = barycentric(pts[2], pts[1], pts[0], P);
-				//vec3f bc_screen = barycentric(pts[0], pts[1], pts[2], P);
+				//vec3f bc_screen = barycentric(pts[2], pts[1], pts[0], P);
+				vec3f bc_screen = barycentric(pts[0], pts[1], pts[2], P);
 
 				//if (bc_screen[0] < 0 && bc_screen[1] < 0 && bc_screen[2] < 0)
 				if (bc_screen[0] >= 0 && bc_screen[1] >= 0 && bc_screen[2] >= 0)
@@ -238,9 +233,9 @@ private:
 					bc_screen[0] /= area;
 					bc_screen[1] /= area;
 					bc_screen[2] /= area;
-					float oneOverZ = pts[0].z * bc_screen[2] + pts[1].z * bc_screen[1] + pts[2].z * bc_screen[0];
-					//float oneOverZ = pts[0].z * bc_screen[0] + pts[1].z * bc_screen[1] + pts[2].z * bc_screen[2];
-					float z = 1 / oneOverZ;
+					//float oneOverZ = pts[0].z * bc_screen[2] + pts[1].z * bc_screen[1] + pts[2].z * bc_screen[0];
+					float z = pts[0].z * bc_screen[0] + pts[1].z * bc_screen[1] + pts[2].z * bc_screen[2];
+					//float z = 1 / oneOverZ;
 
 					if (z < depthTex->m_Depth[int(P.x + P.y * depthTex->m_Width)])
 					{
