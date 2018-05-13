@@ -9,7 +9,7 @@
 #include <climits>
 #include <algorithm>
 
-#define OLD_BARYCENTRIC
+//#define OLD_BARYCENTRIC
 
 class Texture
 {
@@ -161,17 +161,40 @@ private:
 	float edge_function(const vec3f &a, const vec3f &b, const vec3f &c)
 	{
 		return (c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0]);
+		//return (a.x - b.x)*(c.y - a.y) - (a.y - b.y)*(c.x - a.x);
 	}
 
-	vec3f barycentric(const vec3f& v1, const vec3f& v0, const vec3f& v2, const vec3f& p)
+	//vec3f barycentric(const vec3f& a, const vec3f& b, const vec3f& c, const vec3f& p)
+	//{
+	//	vec3f v0 = b - a, v1 = c - a, v2 = p - a;
+
+	//	float d00 = v0.dot(v0);
+	//	float d01 = v0.dot(v1);
+	//	float d11 = v1.dot(v1);
+	//	float d20 = v2.dot(v0);
+	//	float d21 = v2.dot(v1);
+	//	float denom = 1.0f / (d00 * d11 - d01 * d01);
+
+	//	float v = (d11 * d20 - d01 * d21) * denom;
+	//	float w = (d00 * d21 - d01 * d20) * denom;
+	//	float u = 1.0f - v - w;
+
+	//	return vec3f(u, v, w);
+	//}
+
+	vec3f barycentric(vec3f v0, vec3f v1, vec3f v2, vec3f p)
 	{
-		vec3f b;
+		vec3f pixelsample(p.x + 0.5, p.y + 0.5, 0);
 
-		b.x = edge_function(v1, v2, p);
-		b.y = edge_function(v2, v0, p);
-		b.z = edge_function(v0, v1, p);
+		v0.z = 1 / v0.z,
+		v1.z = 1 / v1.z,
+		v2.z = 1 / v2.z;
 
-		return b;
+		float w0 = edge_function(v1, v2, pixelsample);
+		float w1 = edge_function(v2, v0, pixelsample);
+		float w2 = edge_function(v0, v1, pixelsample);
+
+		return vec3f(w0, w1, w2);
 	}
 #endif
 
@@ -192,25 +215,45 @@ private:
 
 		vec3f P;
 
+		float area = edge_function(pts[0], pts[1], pts[2]);
+
 		for (P.x = bboxmin.x; P.x <= bboxmax.x; P.x++)
 		{
 			for (P.y = bboxmin.y; P.y <= bboxmax.y; P.y++)
 			{
-				vec3f bc_screen = barycentric(pts[0], pts[1], pts[2], P);
+				//vec3f bc_screen = barycentric(vec3f(pts[0].x, pts[0].y, 0.0f), vec3f(pts[1].x, pts[1].y, 0.0f), vec3f(pts[2].x, pts[2].y, 0.0f), vec3f(P.x, P.y, 0.0f));
+				/*vec3f bc_screen = barycentric(pts[0], pts[1], pts[2], P);
 
 				if (bc_screen.x < 0 || bc_screen.y < 0 || bc_screen.z < 0)
 					continue;
 
-				P.z = 0;
+				P.z = pts[0].z * bc_screen[0] + pts[1].z * bc_screen[1] + pts[2].z * bc_screen[2];*/
 
-				for (int i = 0; i < 3; i++)
-					P.z += pts[i][2] * bc_screen[i];
+				vec3f bc_screen = barycentric(pts[2], pts[1], pts[0], P);
+				//vec3f bc_screen = barycentric(pts[0], pts[1], pts[2], P);
 
-				if (P.z < depthTex->m_Depth[int(P.x + P.y * depthTex->m_Width)])
+				//if (bc_screen[0] < 0 && bc_screen[1] < 0 && bc_screen[2] < 0)
+				if (bc_screen[0] >= 0 && bc_screen[1] >= 0 && bc_screen[2] >= 0)
+				{
+					bc_screen[0] /= area;
+					bc_screen[1] /= area;
+					bc_screen[2] /= area;
+					float oneOverZ = pts[0].z * bc_screen[2] + pts[1].z * bc_screen[1] + pts[2].z * bc_screen[0];
+					//float oneOverZ = pts[0].z * bc_screen[0] + pts[1].z * bc_screen[1] + pts[2].z * bc_screen[2];
+					float z = 1 / oneOverZ;
+
+					if (z < depthTex->m_Depth[int(P.x + P.y * depthTex->m_Width)])
+					{
+						depthTex->m_Depth[int(P.x + P.y * depthTex->m_Width)] = z;
+						colorTex->SetColor(color, P.x, P.y);
+					}
+				}
+
+				/*if (P.z < depthTex->m_Depth[int(P.x + P.y * depthTex->m_Width)])
 				{
 					depthTex->m_Depth[int(P.x + P.y * depthTex->m_Width)] = P.z;
 					colorTex->SetColor(color, P.x, P.y);
-				}
+				}*/
 			}
 		}
 	}
@@ -268,8 +311,6 @@ protected:
 				screen_coords[j].x = int(screen_coords[j].x * (m_Color->m_Width - 1.0f) + 0.5f);
 				screen_coords[j].y = int(screen_coords[j].y * (m_Color->m_Height - 1.0f) + 0.5f);
 				screen_coords[j].z = depth;
-
-				//std::cout << depth << std::endl;
 
 				vec4f w = m_model * vec4f(v.x, v.y, v.z, 1.0f);
 				world_coords[j] = vec3f(w.x, w.y, w.z);
