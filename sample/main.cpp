@@ -160,28 +160,8 @@ private:
 #else
 	float edge_function(const vec3f &a, const vec3f &b, const vec3f &c)
 	{
-		//return (c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0]);
-		//return (a.x - b.x)*(c.y - a.y) - (a.y - b.y)*(c.x - a.x);
 		return (b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x);
 	}
-
-	//vec3f barycentric(const vec3f& a, const vec3f& b, const vec3f& c, const vec3f& p)
-	//{
-	//	vec3f v0 = b - a, v1 = c - a, v2 = p - a;
-
-	//	float d00 = v0.dot(v0);
-	//	float d01 = v0.dot(v1);
-	//	float d11 = v1.dot(v1);
-	//	float d20 = v2.dot(v0);
-	//	float d21 = v2.dot(v1);
-	//	float denom = 1.0f / (d00 * d11 - d01 * d01);
-
-	//	float v = (d11 * d20 - d01 * d21) * denom;
-	//	float w = (d00 * d21 - d01 * d20) * denom;
-	//	float u = 1.0f - v - w;
-
-	//	return vec3f(u, v, w);
-	//}
 
 	vec3f barycentric(vec3f v0, vec3f v1, vec3f v2, vec3f p)
 	{
@@ -216,24 +196,13 @@ private:
 		{
 			for (P.y = bboxmin.y; P.y <= bboxmax.y; P.y++)
 			{
-				//vec3f bc_screen = barycentric(vec3f(pts[0].x, pts[0].y, 0.0f), vec3f(pts[1].x, pts[1].y, 0.0f), vec3f(pts[2].x, pts[2].y, 0.0f), vec3f(P.x, P.y, 0.0f));
-				/*vec3f bc_screen = barycentric(pts[0], pts[1], pts[2], P);
-
-				if (bc_screen.x < 0 || bc_screen.y < 0 || bc_screen.z < 0)
-					continue;
-
-				P.z = pts[0].z * bc_screen[0] + pts[1].z * bc_screen[1] + pts[2].z * bc_screen[2];*/
-
-				//vec3f bc_screen = barycentric(pts[2], pts[1], pts[0], P);
 				vec3f bc_screen = barycentric(pts[0], pts[1], pts[2], P);
-
-				//if (bc_screen[0] < 0 && bc_screen[1] < 0 && bc_screen[2] < 0)
 				if (bc_screen[0] >= 0 && bc_screen[1] >= 0 && bc_screen[2] >= 0)
 				{
 					bc_screen[0] /= area;
 					bc_screen[1] /= area;
 					bc_screen[2] /= area;
-					//float oneOverZ = pts[0].z * bc_screen[2] + pts[1].z * bc_screen[1] + pts[2].z * bc_screen[0];
+
 					float z = pts[0].z * bc_screen[0] + pts[1].z * bc_screen[1] + pts[2].z * bc_screen[2];
 					//float z = 1 / oneOverZ;
 
@@ -243,12 +212,6 @@ private:
 						colorTex->SetColor(color, P.x, P.y);
 					}
 				}
-
-				/*if (P.z < depthTex->m_Depth[int(P.x + P.y * depthTex->m_Width)])
-				{
-					depthTex->m_Depth[int(P.x + P.y * depthTex->m_Width)] = P.z;
-					colorTex->SetColor(color, P.x, P.y);
-				}*/
 			}
 		}
 	}
