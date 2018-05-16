@@ -163,7 +163,21 @@ private:
 		return (b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x);
 	}
 
+	float edge_function(const vec2f &a, const vec2f &b, const vec2f &c)
+	{
+		return (b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x);
+	}
+
 	vec3f barycentric(vec3f v0, vec3f v1, vec3f v2, vec3f p)
+	{
+		float w0 = edge_function(v1, v2, p);
+		float w1 = edge_function(v2, v0, p);
+		float w2 = edge_function(v0, v1, p);
+
+		return vec3f(w0, w1, w2);
+	}
+
+	vec3f barycentric(vec2f v0, vec2f v1, vec2f v2, vec2f p)
 	{
 		float w0 = edge_function(v1, v2, p);
 		float w1 = edge_function(v2, v0, p);
@@ -216,6 +230,82 @@ private:
 		}
 	}
 
+	inline vec2f convert_to_screen_space(const float& x, const float& y, const uint32_t& width, const uint32_t& height)
+	{
+		return vec2f(int((((x + 1) * width) * 0.5f) + 0.5f), int((((y + 1) * height) * 0.5f) + 0.5f));
+	}
+
+	inline void triangle(const vec3f& v0, const vec3f& v1, const vec3f& v2, const mat4f& mvp, Texture* color_tex, Texture* depth_tex)
+	{
+		// Convert to screen space
+		vec4f v0ndc = mvp * vec4f(v0.x, v0.y, v0.z, 1.0f);
+		vec4f v1ndc = mvp * vec4f(v1.x, v1.y, v1.z, 1.0f);
+		vec4f v2ndc = mvp * vec4f(v2.x, v2.y, v2.z, 1.0f);
+
+		// Perspective division
+		v0ndc = v0ndc / v0ndc.w;
+		v1ndc = v1ndc / v1ndc.w;
+		v2ndc = v2ndc / v2ndc.w;
+
+		// Screen coords
+		vec2f v0screen = convert_to_screen_space(v0ndc.x, v0ndc.y, m_width, m_height);
+		vec2f v1screen = convert_to_screen_space(v1ndc.x, v1ndc.y, m_width, m_height);
+		vec2f v2screen = convert_to_screen_space(v2ndc.x, v2ndc.y, m_width, m_height);
+
+		// Find triangle bounding box
+		vec2f bboxmin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+		vec2f bboxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+
+		vec2f clamp(m_width - 1, m_height - 1);
+
+		// Min
+		bboxmin.x = std::max(0.0f, std::min(bboxmin.x, v0screen.x));
+		bboxmin.x = std::max(0.0f, std::min(bboxmin.x, v1screen.x));
+		bboxmin.x = std::max(0.0f, std::min(bboxmin.x, v2screen.x));
+
+		bboxmin.y = std::max(0.0f, std::min(bboxmin.y, v0screen.y));
+		bboxmin.y = std::max(0.0f, std::min(bboxmin.y, v1screen.y));
+		bboxmin.y = std::max(0.0f, std::min(bboxmin.y, v2screen.y));
+
+		// Max
+		bboxmax.x = std::min(clamp.x, std::max(bboxmax.x, v0screen.x));
+		bboxmax.x = std::min(clamp.x, std::max(bboxmax.x, v1screen.x));
+		bboxmax.x = std::min(clamp.x, std::max(bboxmax.x, v2screen.x));
+						   
+		bboxmax.y = std::min(clamp.y, std::max(bboxmax.y, v0screen.y));
+		bboxmax.y = std::min(clamp.y, std::max(bboxmax.y, v1screen.y));
+		bboxmax.y = std::min(clamp.y, std::max(bboxmax.y, v2screen.y));
+
+		// Triangle area
+		float area = edge_function(v0screen, v1screen, v2screen);
+
+		vec2f p;
+
+		for (p.x = bboxmin.x; p.x <= bboxmax.x; p.x++)
+		{
+			for (p.y = bboxmin.y; p.y <= bboxmax.y; p.y++)
+			{
+				// Calculate barycentric coordinates
+				vec3f bcoords = barycentric(v0screen, v1screen, v2screen, p);
+
+				if (bcoords.x >= 0 && bcoords.y >= 0 && bcoords.z >= 0)
+				{
+					bcoords.x /= area;
+					bcoords.y /= area;
+					bcoords.z /= area;
+
+					float z = v0ndc.z * bcoords.x + v1ndc.z * bcoords.y + v2ndc.z * bcoords.z;
+
+					if (z < depth_tex->m_Depth[int(p.x + p.y * depth_tex->m_Width)])
+					{
+						depth_tex->m_Depth[int(p.x + p.y * depth_tex->m_Width)] = z;
+						color_tex->SetColor(RST_COLOR_RGBA(1.0f, 1.0f, 1.0f, 1.0f), p.x, p.y);
+					}
+				}
+			}
+		}
+	}
+
 	vec3f world2screen(vec3f v, int width, int height) 
 	{
 		return vec3f(int((v.x + 1.)*width / 2. + .5), int((v.y + 1.)*height / 2. + .5), v.z);
@@ -251,36 +341,7 @@ protected:
 		for (int i = 0; i<model->nfaces(); i++) 
 		{
 			std::vector<int>& face = model->face(i);
-
-			vec3f screen_coords[3];
-			vec3f world_coords[3];
-
-			for (int j = 0; j<3; j++) 
-			{
-				vec3f v = model->vert(face[j]);
-				vec4f sv = m_mvp * vec4f(v.x, v.y, v.z, 1.0f);
-				float depth = sv.z;
-				sv = sv / sv.w;
-
-				// Convert to [0 - 1] range
-				screen_coords[j] = ((vec3f(sv.x, sv.y, sv.z) + vec3f(1.0f)) / 2.0f);
-
-				// Convert to device coordinates
-				screen_coords[j].x = int(screen_coords[j].x * (m_Color->m_Width - 1.0f) + 0.5f);
-				screen_coords[j].y = int(screen_coords[j].y * (m_Color->m_Height - 1.0f) + 0.5f);
-				screen_coords[j].z = depth;
-
-				vec4f w = m_model * vec4f(v.x, v.y, v.z, 1.0f);
-				world_coords[j] = vec3f(w.x, w.y, w.z);
-			}
-
-			vec3f N = (world_coords[2] - world_coords[0]).cross(world_coords[1] - world_coords[0]);
-			N = N.normalize();
-
-			float intensity = std::max(0.0f, light_dir.dot(N));
-
-			Color c = white * intensity;
-			triangle(&screen_coords[0], m_Color, m_Depth, RST_COLOR_ARGB(c.R, c.G, c.B, c.A));
+			triangle(model->vert(face[0]), model->vert(face[1]), model->vert(face[2]), m_mvp, m_Color, m_Depth);
 		}
 
 		update_backbuffer(m_Color->m_Pixels);
