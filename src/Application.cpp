@@ -7,7 +7,7 @@ Application::Application() : m_is_running(false),
 							 m_delta_time(0), 
 							 m_last_delta_time(0),
 							 m_width(800),
-							 m_height(600)
+							 m_height(450)
 {
     printf("Initializing..\n");
 }

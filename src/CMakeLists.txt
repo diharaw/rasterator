@@ -10,8 +10,6 @@ set(LIB_FREETYPE_RELEASE "${PROJECT_SOURCE_DIR}/libs/freetype.lib")
 
 # Headers
 set(RASTERATOR_HEADERS "${PROJECT_SOURCE_DIR}/include/application.hpp"
-                       "${PROJECT_SOURCE_DIR}/include/geometry.hpp"
-                       "${PROJECT_SOURCE_DIR}/include/model.hpp"
                        "${PROJECT_SOURCE_DIR}/include/rasterator.hpp"
                        "${PROJECT_SOURCE_DIR}/include/math/mat3.hpp"
                        "${PROJECT_SOURCE_DIR}/include/math/mat4.hpp"
@@ -30,8 +28,6 @@ set(RASTERATOR_HEADERS "${PROJECT_SOURCE_DIR}/include/application.hpp"
 
 # Sources
 set(RASTERATOR_SOURCES "${PROJECT_SOURCE_DIR}/src/application.cpp"
-                       "${PROJECT_SOURCE_DIR}/src/geometry.cpp"
-                       "${PROJECT_SOURCE_DIR}/src/model.cpp"
                        "${PROJECT_SOURCE_DIR}/src/rasterator.cpp")
 
 # Source groups
@@ -40,7 +36,7 @@ source_group("Sources" FILES ${RASTERATOR_SOURCES})
 
 add_library(Rasterator ${RASTERATOR_HEADERS} ${RASTERATOR_SOURCES})
 
-target_link_libraries(Rasterator "${LIB_ASSIMP_RELEASE}")
+# target_link_libraries(Rasterator "${LIB_ASSIMP_RELEASE}")
 target_link_libraries(Rasterator "${LIB_SDL2_RELEASE}")
 target_link_libraries(Rasterator "${LIB_SDL2_MAIN_RELEASE}")
 target_link_libraries(Rasterator "${LIB_SDL2_TTF_RELEASE}")
