@@ -1,5 +1,4 @@
 #include <application.hpp>
-#include <model.hpp>
 #include <math/vec3.hpp>
 #include <rasterator.hpp>
 #include <math/transform.hpp>
@@ -32,14 +31,14 @@ protected:
 		m_color_tex = new rst::Texture(m_width, m_height);
 		m_depth_tex = new rst::Texture(m_width, m_height, true);
 
-		m_position = vec3f(0.0f, 0.0f, 1.0f);
+		m_position = vec3f(0.0f, 0.0f, 2.0f);
 		m_direction = vec3f(0.0f, 0.0f, -1.0f);
 
 		m_view = lookat(m_position, m_position + m_direction, vec3f(0.0f, 1.0f, 0.0f));
 		m_projection = perspective(float(m_width) / float(m_height), radians(60.0f), 0.1f, 100.0f);
 		m_vp = m_projection * m_view;
 
-		if (!rst::create_model("dragon.obj", m_obj_model))
+		if (!rst::create_model("african_head.obj", m_obj_model))
 		{
 			std::cout << "failed to load mesh" << std::endl;
 			return false;
@@ -50,8 +49,8 @@ protected:
 
 	void frame() override
 	{
-		m_depth_tex->Clear();
-		m_color_tex->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+		m_depth_tex->clear();
+		m_color_tex->clear(0.0f, 0.0f, 0.0f, 1.0f);
 
 		vec3f light_dir = vec3f(0.0f, 0.0f, -1.0f);
 		light_dir.normalize();
@@ -60,7 +59,7 @@ protected:
 
 		rst::draw(m_obj_model, m_model, m_view, m_projection, m_color_tex, m_depth_tex);
 
-		update_backbuffer(m_color_tex->m_Pixels);
+		update_backbuffer(m_color_tex->m_pixels);
 	}
 
 	void shutdown() override

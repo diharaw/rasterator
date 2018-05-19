@@ -6,8 +6,8 @@ Application::Application() : m_is_running(false),
                              m_sdl_window(nullptr),
 							 m_delta_time(0), 
 							 m_last_delta_time(0),
-							 m_width(800),
-							 m_height(450)
+							 m_width(1280),
+							 m_height(720)
 {
     printf("Initializing..\n");
 }

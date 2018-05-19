@@ -45,87 +45,20 @@ namespace rst
 	class Texture
 	{
 	public:
-		uint32_t * m_Pixels;
-		float*	  m_Depth;
-		uint32_t  m_Width;
-		uint32_t  m_Height;
+		uint32_t * m_pixels;
+		float*	  m_depth;
+		uint32_t  m_width;
+		uint32_t  m_height;
 
 	public:
-		Texture(uint32_t width, uint32_t height, bool depth = false) : m_Width(width), m_Height(height)
-		{
-			if (depth)
-			{
-				m_Pixels = nullptr;
-				m_Depth = new float[width * height];
-			}
-			else
-			{
-				m_Pixels = new uint32_t[width * height];;
-				m_Depth = nullptr;
-			}
-		}
-
-		~Texture()
-		{
-			RST_SAFE_DELETE_ARRAY(m_Pixels);
-			RST_SAFE_DELETE_ARRAY(m_Depth);
-		}
-
-		void SetDepth(float depth, uint32_t x, uint32_t y)
-		{
-			y = m_Height - y - 1;
-
-			if (m_Depth)
-			{
-				if (x > m_Width - 1 || x < 0)
-					return;
-
-				if (y > m_Height - 1 || y < 0)
-					return;
-
-				m_Depth[y * m_Width + x] = depth;
-			}
-		}
-
-		void SetColor(uint32_t color, uint32_t x, uint32_t y)
-		{
-			y = m_Height - y - 1;
-
-			if (m_Pixels)
-			{
-				if (x > m_Width - 1 || x < 0)
-					return;
-
-				if (y > m_Height - 1 || y < 0)
-					return;
-
-				m_Pixels[y * m_Width + x] = color;
-			}
-		}
-
-		void Clear()
-		{
-			if (m_Depth)
-			{
-				uint32_t size = m_Width * m_Height;
-				float depth = INFINITY;
-
-				for (uint32_t i = 0; i < size; i++)
-					m_Depth[i] = depth;
-			}
-		}
-
-		void Clear(float r, float g, float b, float a)
-		{
-			if (m_Pixels)
-			{
-				uint32_t color = RST_COLOR_ARGB(r, g, b, a);
-				uint32_t size = m_Width * m_Height;
-
-				for (uint32_t i = 0; i < size; i++)
-					m_Pixels[i] = color;
-			}
-		}
+		Texture(uint32_t width, uint32_t height, bool depth = false);
+		Texture(const std::string& name);
+		~Texture();
+		void set_depth(float depth, uint32_t x, uint32_t y);
+		void set_color(uint32_t color, uint32_t x, uint32_t y);
+		uint32_t sample(float x, float y);
+		void clear();
+		void clear(float r, float g, float b, float a);
 	};
 
 	class Color
@@ -133,28 +66,10 @@ namespace rst
 	public:
 		float R, G, B, A;
 
-		Color(float r = 1.0f, float g = 1.0f, float b = 1.0f, float a = 1.0f)
-		{
-			R = r;
-			G = g;
-			B = b;
-			A = a;
-		}
-
-		Color operator + (const Color &c) const
-		{
-			return Color(R + c.R, G + c.G, B + c.B, A + c.A);
-		}
-
-		Color operator - (const Color &c) const
-		{
-			return Color(R - c.R, G - c.G, B - c.B, A - c.A);
-		}
-
-		Color operator * (float f) const
-		{
-			return Color(R * f, G * f, B * f, A * f);
-		}
+		Color(float r = 1.0f, float g = 1.0f, float b = 1.0f, float a = 1.0f);
+		Color operator + (const Color &c) const;
+		Color operator - (const Color &c) const;
+		Color operator * (float f) const;
 	};
 
 

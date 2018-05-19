@@ -8,7 +8,118 @@
 
 namespace rst
 {
-	
+	Color::Color(float r, float g, float b, float a)
+	{
+		R = r;
+		G = g;
+		B = b;
+		A = a;
+	}
+
+	Color Color::operator + (const Color &c) const
+	{
+		return Color(R + c.R, G + c.G, B + c.B, A + c.A);
+	}
+
+	Color Color::operator - (const Color &c) const
+	{
+		return Color(R - c.R, G - c.G, B - c.B, A - c.A);
+	}
+
+	Color Color::operator * (float f) const
+	{
+		return Color(R * f, G * f, B * f, A * f);
+	}
+
+	Texture::Texture(uint32_t width, uint32_t height, bool depth) : m_width(width), m_height(height)
+	{
+		if (depth)
+		{
+			m_pixels = nullptr;
+			m_depth = new float[width * height];
+		}
+		else
+		{
+			m_pixels = new uint32_t[width * height];;
+			m_depth = nullptr;
+		}
+	}
+
+	Texture::Texture(const std::string& name)
+	{
+
+	}
+
+	Texture::~Texture()
+	{
+		RST_SAFE_DELETE_ARRAY(m_pixels);
+		RST_SAFE_DELETE_ARRAY(m_depth);
+	}
+
+	void Texture::set_depth(float depth, uint32_t x, uint32_t y)
+	{
+		y = m_height - y - 1;
+
+		if (m_depth)
+		{
+			if (x > m_width - 1 || x < 0)
+				return;
+
+			if (y > m_height - 1 || y < 0)
+				return;
+
+			m_depth[y * m_width + x] = depth;
+		}
+	}
+
+	void Texture::set_color(uint32_t color, uint32_t x, uint32_t y)
+	{
+		y = m_height - y - 1;
+
+		if (m_pixels)
+		{
+			if (x > m_width - 1 || x < 0)
+				return;
+
+			if (y > m_height - 1 || y < 0)
+				return;
+
+			m_pixels[y * m_width + x] = color;
+		}
+	}
+
+	uint32_t Texture::sample(float x, float y)
+	{
+		uint32_t x_coord = x * (m_width - 1);
+		uint32_t y_coord = y * (m_height - 1);
+
+		return m_pixels[y_coord * m_width + x_coord];
+	}
+
+	void Texture::clear()
+	{
+		if (m_depth)
+		{
+			uint32_t size = m_width * m_height;
+			float depth = INFINITY;
+
+			for (uint32_t i = 0; i < size; i++)
+				m_depth[i] = depth;
+		}
+	}
+
+	void Texture::clear(float r, float g, float b, float a)
+	{
+		if (m_pixels)
+		{
+			uint32_t color = RST_COLOR_ARGB(r, g, b, a);
+			uint32_t size = m_width * m_height;
+
+			for (uint32_t i = 0; i < size; i++)
+				m_pixels[i] = color;
+		}
+	}
+
 	bool create_model(const std::string& file, Model& model)
 	{
 		tinyobj::attrib_t attrib;
@@ -83,15 +194,6 @@ namespace rst
 		return (b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x);
 	}
 
-	inline vec3f barycentric(vec2f v0, vec2f v1, vec2f v2, vec2f p)
-	{
-		float w0 = edge_function(v1, v2, p);
-		float w1 = edge_function(v2, v0, p);
-		float w2 = edge_function(v0, v1, p);
-
-		return vec3f(w0, w1, w2);
-	}
-
 	inline vec2f convert_to_screen_space(const float& x, const float& y, const uint32_t& width, const uint32_t& height)
 	{
 		return vec2f(int((((x + 1) * width) * 0.5f) + 0.5f), int((((y + 1) * height) * 0.5f) + 0.5f));
@@ -99,8 +201,8 @@ namespace rst
 
 	inline void triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, const mat4f& mvp, Texture* color_tex, Texture* depth_tex)
 	{
-		uint32_t width = color_tex->m_Width;
-		uint32_t height = color_tex->m_Height;
+		uint32_t width = color_tex->m_width;
+		uint32_t height = color_tex->m_height;
 
 		// Convert to screen space
 		vec4f v0ndc = mvp * vec4f(v0.position.x, v0.position.y, v0.position.z, 1.0f);
@@ -146,25 +248,34 @@ namespace rst
 
 		vec2f p;
 
+		// Iterate over pixels in triangle bounding box
 		for (p.x = bboxmin.x; p.x <= bboxmax.x; p.x++)
 		{
 			for (p.y = bboxmin.y; p.y <= bboxmax.y; p.y++)
 			{
 				// Calculate barycentric coordinates
-				vec3f bcoords = barycentric(v0screen, v1screen, v2screen, p);
+				float w0 = edge_function(v1screen, v2screen, p);
+				float w1 = edge_function(v2screen, v0screen, p);
+				float w2 = edge_function(v0screen, v1screen, p);
 
-				if (bcoords.x >= 0 && bcoords.y >= 0 && bcoords.z >= 0)
+				// Is the current pixel within the triangle?
+				if (w0 >= 0 && w1 >= 0 && w2 >= 0)
 				{
-					bcoords.x /= area;
-					bcoords.y /= area;
-					bcoords.z /= area;
+					w0 /= area;
+					w1 /= area;
+					w2 /= area;
 
-					float z = v0ndc.z * bcoords.x + v1ndc.z * bcoords.y + v2ndc.z * bcoords.z;
+					// Calculate interpolated pixel depth
+					float z = v0ndc.z * w0 + v1ndc.z * w1 + v2ndc.z *w2;
 
-					if (z < depth_tex->m_Depth[int(p.x + p.y * depth_tex->m_Width)])
+					// Perform depth test
+					if (z < depth_tex->m_depth[int(p.x + p.y * depth_tex->m_width)])
 					{
-						depth_tex->m_Depth[int(p.x + p.y * depth_tex->m_Width)] = z;
-						color_tex->SetColor(RST_COLOR_RGBA(1.0f, 1.0f, 1.0f, 1.0f), p.x, p.y);
+						// Update depth buffer value if depth test is passesd
+						depth_tex->m_depth[int(p.x + p.y * depth_tex->m_width)] = z;
+
+						// Write new pixel color
+						color_tex->set_color(RST_COLOR_RGBA(1.0f, 1.0f, 1.0f, 1.0f), p.x, p.y);
 					}
 				}
 			}
