@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 # External Dependencies
 set(LIB_ASSIMP_RELEASE "${PROJECT_SOURCE_DIR}/libs/assimp.lib")
+set(LIB_ASSIMP_DEBUG "${PROJECT_SOURCE_DIR}/libs/debug/assimp.lib")
+
 set(LIB_SDL2_RELEASE "${PROJECT_SOURCE_DIR}/libs/SDL2.lib")
 set(LIB_SDL2_MAIN_RELEASE "${PROJECT_SOURCE_DIR}/libs/SDL2main.lib")
 set(LIB_SDL2_TTF_RELEASE "${PROJECT_SOURCE_DIR}/libs/SDL2_ttf.lib")
@@ -41,6 +43,7 @@ target_link_libraries(Rasterator "${LIB_SDL2_RELEASE}")
 target_link_libraries(Rasterator "${LIB_SDL2_MAIN_RELEASE}")
 target_link_libraries(Rasterator "${LIB_SDL2_TTF_RELEASE}")
 target_link_libraries(Rasterator "${LIB_FREETYPE_RELEASE}")
+target_link_libraries(Rasterator debug "${LIB_ASSIMP_DEBUG}" optimized "${LIB_ASSIMP_RELEASE}")
 
 if(WIN32)
     target_link_libraries(Rasterator "user32.lib"

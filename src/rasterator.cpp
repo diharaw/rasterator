@@ -6,6 +6,9 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 namespace rst
 {
 	Color::Color(float r, float g, float b, float a)
@@ -40,14 +43,27 @@ namespace rst
 		}
 		else
 		{
-			m_pixels = new uint32_t[width * height];;
+			m_pixels = new uint32_t[width * height];
 			m_depth = nullptr;
 		}
 	}
 
 	Texture::Texture(const std::string& name)
 	{
+		int x, y, comp;
 
+		//stbi_set_flip_vertically_on_load(true);
+		stbi_uc* data = stbi_load(name.c_str(), &x, &y, &comp, 4);
+
+		m_width = x;
+		m_height = y;
+
+		m_pixels = new uint32_t[x * y];
+		m_depth = nullptr;
+
+		memcpy(m_pixels, data, sizeof(stbi_uc) * x * y * 4);
+
+		stbi_image_free(data);
 	}
 
 	Texture::~Texture()
@@ -186,6 +202,8 @@ namespace rst
 			model.submodels.push_back(submodel);
 		}
 
+		model.tex = new Texture("african_head_diffuse.tga");
+
 		return true;
 	}
 
@@ -199,7 +217,7 @@ namespace rst
 		return vec2f(int((((x + 1) * width) * 0.5f) + 0.5f), int((((y + 1) * height) * 0.5f) + 0.5f));
 	}
 
-	inline void triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, const mat4f& mvp, Texture* color_tex, Texture* depth_tex)
+	inline void triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, const mat4f& mvp, Texture* color_tex, Texture* depth_tex, Texture* diffuse = nullptr)
 	{
 		uint32_t width = color_tex->m_width;
 		uint32_t height = color_tex->m_height;
@@ -274,8 +292,17 @@ namespace rst
 						// Update depth buffer value if depth test is passesd
 						depth_tex->m_depth[int(p.x + p.y * depth_tex->m_width)] = z;
 
+						// Interpolate texture coordinates
+						vec2f texcoord = v0.texcoord * w0 + v1.texcoord * w1 + v2.texcoord * w2;
+
+						//std::cout << "[ " << texcoord.x << ", " << texcoord.y << " ]" << std::endl;
+
+						// Fetch texture sample
+						uint32_t color = diffuse->sample(texcoord.x, texcoord.y);
+
 						// Write new pixel color
-						color_tex->set_color(RST_COLOR_RGBA(1.0f, 1.0f, 1.0f, 1.0f), p.x, p.y);
+						color_tex->set_color(color, p.x, p.y);
+						//color_tex->set_color(RST_COLOR_RGBA(1.0f, 1.0f, 1.0f, 1.0f), p.x, p.y);
 					}
 				}
 			}
@@ -293,7 +320,7 @@ namespace rst
 			#pragma omp parallel for
 			for (int32_t i = 0; i < submodel.num_indices; i += 3)
 			{
-				triangle(model.vertices[model.indices[i]], model.vertices[model.indices[i + 1]], model.vertices[model.indices[i + 2]], mvp, color, depth);
+				triangle(model.vertices[model.indices[i]], model.vertices[model.indices[i + 1]], model.vertices[model.indices[i + 2]], mvp, color, depth, model.tex);
 			}
 		}
 

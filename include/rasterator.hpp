@@ -21,27 +21,6 @@ int main(int argc, char* argv[])    \
 
 namespace rst
 {
-	struct Vertex
-	{
-		vec3f position;
-		vec3f normal;
-		vec2f texcoord;
-	};
-
-	struct SubModel
-	{
-		uint32_t material_index = 0;
-		uint32_t base_index = 0;
-		uint32_t num_indices = 0;
-	};
-
-	struct Model
-	{
-		std::vector<Vertex>   vertices;
-		std::vector<uint32_t> indices;
-		std::vector<SubModel> submodels;
-	};
-
 	class Texture
 	{
 	public:
@@ -72,6 +51,27 @@ namespace rst
 		Color operator * (float f) const;
 	};
 
+	struct Vertex
+	{
+		vec3f position;
+		vec3f normal;
+		vec2f texcoord;
+	};
+
+	struct SubModel
+	{
+		uint32_t material_index = 0;
+		uint32_t base_index = 0;
+		uint32_t num_indices = 0;
+	};
+
+	struct Model
+	{
+		Texture* tex;
+		std::vector<Vertex>   vertices;
+		std::vector<uint32_t> indices;
+		std::vector<SubModel> submodels;
+	};
 
 	extern bool create_model(const std::string& file, Model& model);
 	extern void draw(Model& model, const mat4f& m, const mat4f& v, const mat4f& p, Texture* color, Texture* depth);

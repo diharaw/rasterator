@@ -38,3 +38,5 @@ bin/
 lib/
 x64/
 x64/*
+libs/libs_debug_vs2017.7z
+libs/libs_release_vs2017.7z
