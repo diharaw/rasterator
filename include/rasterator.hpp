@@ -55,6 +55,7 @@ namespace rst
 	{
 		vec3f position;
 		vec3f normal;
+		vec3f tangent;
 		vec2f texcoord;
 	};
 

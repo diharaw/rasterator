@@ -2,9 +2,11 @@
 #include <iostream>
 #include <stdio.h>
 #include <algorithm>
+#include <unordered_map>
 
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
+#include <Importer.hpp>
+#include <scene.h>
+#include <postprocess.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -136,70 +138,187 @@ namespace rst
 		}
 	}
 
-	bool create_model(const std::string& file, Model& model)
+	static const aiTextureType kTextureTypes[] = 
 	{
-		tinyobj::attrib_t attrib;
-		std::vector<tinyobj::shape_t> shapes;
-		std::vector<tinyobj::material_t> materials;
-		std::string err;
+		aiTextureType_DIFFUSE,
+		aiTextureType_SPECULAR,
+		aiTextureType_AMBIENT,
+		aiTextureType_EMISSIVE,
+		aiTextureType_HEIGHT,
+		aiTextureType_NORMALS,
+		aiTextureType_SHININESS,
+		aiTextureType_OPACITY,
+		aiTextureType_DISPLACEMENT,
+		aiTextureType_LIGHTMAP,
+		aiTextureType_REFLECTION
+	};
 
-		bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, file.c_str());
+	static const char* kTextureTypeStrings[] = 
+	{
+		"aiTextureType_DIFFUSE",
+		"aiTextureType_SPECULAR",
+		"aiTextureType_AMBIENT",
+		"aiTextureType_EMISSIVE",
+		"aiTextureType_HEIGHT",
+		"aiTextureType_NORMALS",
+		"aiTextureType_SHININESS",
+		"aiTextureType_OPACITY",
+		"aiTextureType_DISPLACEMENT",
+		"aiTextureType_LIGHTMAP",
+		"aiTextureType_REFLECTION"
+	};
 
-		if (!err.empty())
-			std::cerr << err << std::endl;
+	std::string get_texture_path(aiMaterial* a_Material, aiTextureType a_TextureType)
+	{
+		aiString path;
+		aiReturn result = a_Material->GetTexture(a_TextureType, 0, &path);
 
-		if (!ret)
-			return false;
-
-		uint32_t num_vertices = attrib.vertices.size() / 3;
-
-		for (size_t v = 0; v < num_vertices; v++)
+		if (result == aiReturn_FAILURE)
+			return "";
+		else
 		{
-			Vertex vert;
+			std::string cppStr = std::string(path.C_Str());
 
-			vert.position.x = attrib.vertices[3 * v + 0];
-			vert.position.y = attrib.vertices[3 * v + 1];
-			vert.position.z = attrib.vertices[3 * v + 2];
-			
-			if (attrib.normals.size() > 0)
-			{
-				vert.normal.x = attrib.normals[3 * v + 0];
-				vert.normal.x = attrib.normals[3 * v + 1];
-				vert.normal.x = attrib.normals[3 * v + 2];
-			}
+			if (cppStr == "")
+				return "";
 
-			if (attrib.texcoords.size() > 0)
-			{
-				vert.texcoord.x = attrib.texcoords[2 * v + 0];
-				vert.texcoord.y = attrib.texcoords[2 * v + 1];
-			}
-	
-			model.vertices.push_back(vert);
+			return cppStr;
+		}
+	}
+
+	bool does_material_exist(const std::vector<unsigned int>& _Materials, const uint32_t& _CurrentMaterial)
+	{
+		for (auto it : _Materials)
+		{
+			if (it == _CurrentMaterial)
+				return true;
 		}
 
-		for (size_t s = 0; s < shapes.size(); s++) 
+		return false;
+	}
+
+	bool create_model(const std::string& file, Model& model)
+	{
+		const aiScene* Scene;
+		Assimp::Importer Importer;
+		Scene = Importer.ReadFile(file, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+
+		uint32_t mesh_count = Scene->mNumMeshes;
+		uint32_t index_count = 0;
+
+		aiMaterial* TempMaterial;
+		uint8_t materialIndex = 0;
+
+		//std::vector<Assimp_Material> temp_materials;
+		std::vector<unsigned int> processedMatId;
+		std::unordered_map<unsigned int, uint8_t> MatIDMapping;
+		uint32_t unamedMats = 1;
+
+		for (int i = 0; i < mesh_count; i++)
 		{
 			SubModel submodel;
-			submodel.base_index = model.indices.size();
-	
-			size_t index_offset = 0;
 
-			for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) 
+			bool hasLeastOneTexture = false;
+
+			submodel.num_indices = Scene->mMeshes[i]->mNumFaces * 3;
+			submodel.base_index = index_count;
+
+			index_count += submodel.num_indices;
+
+			//if (!does_material_exist(processedMatId, Scene->mMeshes[i]->mMaterialIndex))
+			//{
+			//	Assimp_Material temp;
+
+			//	TempMaterial = Scene->mMaterials[Scene->mMeshes[i]->mMaterialIndex];
+			//	temp.mesh_name = std::string(Scene->mMeshes[i]->mName.C_Str());
+
+			//	std::string albedo = get_texture_path(TempMaterial, aiTextureType_DIFFUSE);
+
+			//	temp.albedo[0] = '\0';
+			//	if (albedo != "")
+			//	{
+			//		std::replace(albedo.begin(), albedo.end(), '\\', '/');
+
+			//		if (albedo.length() > 4 && albedo[0] != ' ')
+			//		{
+			//			hasLeastOneTexture = true;
+			//			strncpy(temp.albedo, albedo.c_str(), 50);
+			//		}
+			//	}
+
+			//	if (hasLeastOneTexture)
+			//	{
+			//		if (temp.mesh_name.length() == 0 || temp.mesh_name == "" || temp.mesh_name == " ")
+			//			temp.mesh_name = "untitled_" + std::to_string(unamedMats++);
+
+			//		processedMatId.push_back(Scene->mMeshes[i]->mMaterialIndex);
+			//		submodel.material_index = materialIndex;
+			//		MatIDMapping[Scene->mMeshes[i]->mMaterialIndex] = materialIndex;
+
+			//		temp_materials.push_back(temp);
+			//		materialIndex++;
+			//	}
+			//	else
+			//	{
+			//		submodel.material_index = 0;
+			//	}
+			//}
+			//else // if already exists, find the internal ID it maps to.
+			//{
+			//	submodel.material_index = MatIDMapping[Scene->mMeshes[i]->mMaterialIndex];
+			//}
+
+			model.submodels.push_back(submodel);
+		}
+
+		/*if (load_data->header.material_count > 0)
+			load_data->materials = new Assimp_Material[load_data->header.material_count];
+		else
+			load_data->materials = nullptr;
+
+		for (int i = 0; i < temp_materials.size(); i++)
+		{
+			load_data->materials[i] = temp_materials[i];
+		}*/
+
+		aiMesh* TempMesh;
+		int idx = 0;
+		int vertexIndex = 0;
+
+		for (int i = 0; i < mesh_count; i++)
+		{
+			TempMesh = Scene->mMeshes[i];
+
+			for (int k = 0; k < Scene->mMeshes[i]->mNumVertices; k++)
 			{
-				size_t fv = shapes[s].mesh.num_face_vertices[f];
+				Vertex vert;
 
-				for (size_t v = 0; v < fv; v++)
-				{
-					tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
-					submodel.num_indices++;
-					model.indices.push_back(idx.vertex_index);
-				}
+				vert.position = vec3f(TempMesh->mVertices[k].x, TempMesh->mVertices[k].y, TempMesh->mVertices[k].z);
+				vec3f n = vec3f(TempMesh->mNormals[k].x, TempMesh->mNormals[k].y, TempMesh->mNormals[k].z);
+				vec3f t = vec3f(TempMesh->mTangents[k].x, TempMesh->mTangents[k].y, TempMesh->mTangents[k].z);
+				vec3f b = vec3f(TempMesh->mBitangents[k].x, TempMesh->mBitangents[k].y, TempMesh->mBitangents[k].z);
 
-				index_offset += fv;
+				// @NOTE: Assuming right handed coordinate space
+				if (n.cross(t).dot(b) < 0.0f)
+					t = t * -1.0f; // Flip tangent
+
+				vert.normal = n;
+				vert.tangent = t;
+
+				if (TempMesh->HasTextureCoords(0))
+					vert.texcoord = vec2f(TempMesh->mTextureCoords[0][k].x, TempMesh->mTextureCoords[0][k].y);
+
+				vertexIndex++;
+
+				model.vertices.push_back(vert);
 			}
 
-			submodel.material_index = shapes[s].mesh.material_ids[0];
-			model.submodels.push_back(submodel);
+			for (int j = 0; j < TempMesh->mNumFaces; j++)
+			{
+				model.indices.push_back(TempMesh->mFaces[j].mIndices[0]);
+				model.indices.push_back(TempMesh->mFaces[j].mIndices[1]);
+				model.indices.push_back(TempMesh->mFaces[j].mIndices[2]);
+			}
 		}
 
 		model.tex = new Texture("african_head_diffuse.tga");
