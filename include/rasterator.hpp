@@ -16,15 +16,17 @@ int main(int argc, char* argv[])    \
 
 #define RST_SAFE_DELETE(OBJECT) if(OBJECT) { delete OBJECT; OBJECT = nullptr; }
 #define RST_SAFE_DELETE_ARRAY(OBJECT) if(OBJECT) { delete[] OBJECT; OBJECT = nullptr; }
-#define RST_COLOR_ARGB(RED, GREEN, BLUE, ALPHA) (static_cast<uint32_t>(ALPHA * 255.0f) << 24) | (static_cast<uint32_t>(RED * 255.0f) << 16) | (static_cast<uint32_t>(GREEN * 255.0f) << 8) | static_cast<uint32_t>(BLUE * 255.0f)
+#define RST_COLOR_ARGB(RED, GREEN, BLUE, ALPHA) (static_cast<uint32_t>(BLUE * 255.0f) << 24) | (static_cast<uint32_t>(GREEN * 255.0f) << 16) | (static_cast<uint32_t>(RED * 255.0f) << 8) | static_cast<uint32_t>(ALPHA * 255.0f)
 #define RST_COLOR_RGBA(RED, GREEN, BLUE, ALPHA) (static_cast<uint32_t>(RED * 255.0f) << 24) | (static_cast<uint32_t>(GREEN * 255.0f) << 16) | static_cast<uint32_t>(BLUE * 255.0f) << 8 | static_cast<uint32_t>(ALPHA * 255.0f)
 
 namespace rst
 {
+	class Color;
+
 	class Texture
 	{
 	public:
-		uint32_t * m_pixels;
+		Color*	  m_pixels;
 		float*	  m_depth;
 		uint32_t  m_width;
 		uint32_t  m_height;
@@ -43,9 +45,20 @@ namespace rst
 	class Color
 	{
 	public:
-		float R, G, B, A;
+		union
+		{
+			uint32_t pixel;
+			struct
+			{
+				uint8_t r;
+				uint8_t g;
+				uint8_t b;
+				uint8_t a;
+			};
+		};
 
-		Color(float r = 1.0f, float g = 1.0f, float b = 1.0f, float a = 1.0f);
+		Color(uint8_t _r = 255, uint8_t _g = 255, uint8_t _b = 255, uint8_t _a = 255);
+		Color(uint32_t _pixel);
 		Color operator + (const Color &c) const;
 		Color operator - (const Color &c) const;
 		Color operator * (float f) const;

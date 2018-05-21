@@ -13,27 +13,32 @@
 
 namespace rst
 {
-	Color::Color(float r, float g, float b, float a)
+	Color::Color(uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a)
 	{
-		R = r;
-		G = g;
-		B = b;
-		A = a;
+		r = _r;
+		g = _g;
+		b = _b;
+		a = _a;
+	}
+
+	Color::Color(uint32_t _pixel)
+	{
+		pixel = _pixel;
 	}
 
 	Color Color::operator + (const Color &c) const
 	{
-		return Color(R + c.R, G + c.G, B + c.B, A + c.A);
+		return Color(r + c.r, g + c.g, b + c.b, a + c.a);
 	}
 
 	Color Color::operator - (const Color &c) const
 	{
-		return Color(R - c.R, G - c.G, B - c.B, A - c.A);
+		return Color(r - c.r, g - c.g, b - c.b, a - c.a);
 	}
 
 	Color Color::operator * (float f) const
 	{
-		return Color(R * f, G * f, B * f, A * f);
+		return Color(r * f, g * f, b * f, a * f);
 	}
 
 	Texture::Texture(uint32_t width, uint32_t height, bool depth) : m_width(width), m_height(height)
@@ -45,7 +50,7 @@ namespace rst
 		}
 		else
 		{
-			m_pixels = new uint32_t[width * height];
+			m_pixels = new Color[width * height];
 			m_depth = nullptr;
 		}
 	}
@@ -55,15 +60,21 @@ namespace rst
 		int x, y, comp;
 
 		//stbi_set_flip_vertically_on_load(true);
-		stbi_uc* data = stbi_load(name.c_str(), &x, &y, &comp, 4);
+		Color* data = (Color*)stbi_load(name.c_str(), &x, &y, &comp, 4);
 
 		m_width = x;
 		m_height = y;
 
-		m_pixels = new uint32_t[x * y];
+		m_pixels = new Color[x * y];
 		m_depth = nullptr;
 
-		memcpy(m_pixels, data, sizeof(stbi_uc) * x * y * 4);
+		int size = x * y;
+
+		for (int i = 0; i < size; i++)
+		{
+			Color& c = data[i];
+			m_pixels[i] = Color(c.b, c.g, c.r, 255);
+		}
 
 		stbi_image_free(data);
 	}
@@ -111,7 +122,7 @@ namespace rst
 		uint32_t x_coord = x * (m_width - 1);
 		uint32_t y_coord = y * (m_height - 1);
 
-		return m_pixels[y_coord * m_width + x_coord];
+		return m_pixels[y_coord * m_width + x_coord].pixel;
 	}
 
 	void Texture::clear()
@@ -130,11 +141,11 @@ namespace rst
 	{
 		if (m_pixels)
 		{
-			uint32_t color = RST_COLOR_ARGB(r, g, b, a);
+			Color color = Color(b * 255.0f, g * 255.0f, r * 255.0f, a * 255.0f);
 			uint32_t size = m_width * m_height;
 
 			for (uint32_t i = 0; i < size; i++)
-				m_pixels[i] = color;
+				m_pixels[i] = color.pixel;
 		}
 	}
 
