@@ -37,7 +37,7 @@
 
    If you provide your own WinMain(), you may define SDL_MAIN_HANDLED
  */
-#define SDL_MAIN_AVAILABLE
+//#define SDL_MAIN_AVAILABLE
 
 #elif defined(__WINRT__)
 /* On WinRT, SDL provides a main function that initializes CoreApplication,

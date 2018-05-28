@@ -31,7 +31,7 @@ protected:
 		m_color_tex = new rst::Texture(m_width, m_height);
 		m_depth_tex = new rst::Texture(m_width, m_height, true);
 
-		m_position = vec3f(0.0f, 0.0f, 2.0f);
+		m_position = vec3f(0.0f, 0.0f, 1.0f);
 		m_direction = vec3f(0.0f, 0.0f, -1.0f);
 
 		m_view = lookat(m_position, m_position + m_direction, vec3f(0.0f, 1.0f, 0.0f));

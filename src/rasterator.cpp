@@ -11,6 +11,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include <SDL.h>
+
 namespace rst
 {
 	Color::Color(uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a)
@@ -60,7 +62,9 @@ namespace rst
 		int x, y, comp;
 
 		//stbi_set_flip_vertically_on_load(true);
-		Color* data = (Color*)stbi_load(name.c_str(), &x, &y, &comp, 4);
+        std::string base_path = SDL_GetBasePath();
+        std::string path = base_path + name;
+		Color* data = (Color*)stbi_load(path.c_str(), &x, &y, &comp, 4);
 
 		m_width = x;
 		m_height = y;
@@ -107,22 +111,54 @@ namespace rst
 
 		if (m_pixels)
 		{
-			if (x > m_width - 1 || x < 0)
+			if (x > m_width - 1)
 				return;
 
-			if (y > m_height - 1 || y < 0)
+			if (y > m_height - 1)
 				return;
 
 			m_pixels[y * m_width + x] = color;
 		}
 	}
-
+    
+    inline Color bilinear_interpolation(const float& tx, const float& ty, const Color& c00, const Color& c01, const Color& c10, const Color& c11)
+    {
+        Color a = c00 * (1 - tx) + c10 * tx;
+        Color b = c01 * (1 - tx) + c11 * tx;
+        return a * (1 - ty) + b * ty;
+    }
+#define BILINEAR
 	uint32_t Texture::sample(float x, float y)
 	{
-		uint32_t x_coord = x * (m_width - 1);
-		uint32_t y_coord = y * (m_height - 1);
+#if defined(BILINEAR)
+        // Bilinear Filtering
+        float x_coord = x * (float(m_width) - 1.0f);
+        float y_coord = y * (float(m_height) - 1.0f);
+        
+        // Get floor value of coordinate
+        uint32_t x_floor = uint32_t(x_coord);
+        uint32_t y_floor = uint32_t(y_coord);
 
-		return m_pixels[y_coord * m_width + x_coord].pixel;
+        // Get ceil value of coordinate
+        uint32_t x_ceil = ceil(x_coord);
+        uint32_t y_ceil = ceil(y_coord);
+
+        // Calculate tx, ty
+        float tx = x_coord - x_floor;
+        float ty = y_coord - y_floor;
+        
+        Color& c00 = m_pixels[y_floor * m_width + x_floor];
+        Color& c01 = m_pixels[y_ceil * m_width + x_floor];
+        Color& c10 = m_pixels[y_floor * m_width + x_ceil];
+        Color& c11 = m_pixels[y_ceil * m_width + x_ceil];
+        
+        return bilinear_interpolation(tx, ty, c00, c01, c10, c11).pixel;
+#else
+        uint32_t x_coord = x * (m_width - 1);
+        uint32_t y_coord = y * (m_height - 1);
+
+        return m_pixels[y_coord * m_width + x_coord].pixel;
+#endif
 	}
 
 	void Texture::clear()
@@ -212,7 +248,11 @@ namespace rst
 	{
 		const aiScene* Scene;
 		Assimp::Importer Importer;
-		Scene = Importer.ReadFile(file, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+        
+        std::string base_path = SDL_GetBasePath();
+        std::string path = base_path + file;
+        
+		Scene = Importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
 
 		uint32_t mesh_count = Scene->mNumMeshes;
 		uint32_t index_count = 0;

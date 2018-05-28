@@ -83,7 +83,12 @@ bool Application::_initialize()
 	m_sdl_backbuffer = SDL_CreateTexture(m_sdl_renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, m_width, m_height);
 
 	TTF_Init();
-	m_ttf_font = TTF_OpenFont("fonts/DroidSans.ttf", 20);
+    std::string base_path = SDL_GetBasePath();
+    std::string font_path = base_path + "fonts/DroidSans.ttf";
+
+	std::cout << font_path << std::endl;
+
+	m_ttf_font = TTF_OpenFont(font_path.c_str(), 20);
 
 	if (!initialize())
 		return false;

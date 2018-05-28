@@ -1,14 +1,33 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 # External Dependencies
-set(LIB_ASSIMP_RELEASE "${PROJECT_SOURCE_DIR}/libs/assimp.lib")
-set(LIB_ASSIMP_DEBUG "${PROJECT_SOURCE_DIR}/libs/debug/assimp.lib")
+if(WIN32)
+    set(LIB_ASSIMP_RELEASE "${PROJECT_SOURCE_DIR}/libs/assimp.lib")
+    set(LIB_ASSIMP_DEBUG "${PROJECT_SOURCE_DIR}/libs/debug/assimp.lib")
 
-set(LIB_SDL2_RELEASE "${PROJECT_SOURCE_DIR}/libs/SDL2.lib")
-set(LIB_SDL2_MAIN_RELEASE "${PROJECT_SOURCE_DIR}/libs/SDL2main.lib")
-set(LIB_SDL2_TTF_RELEASE "${PROJECT_SOURCE_DIR}/libs/SDL2_ttf.lib")
-set(LIB_FREETYPE_RELEASE "${PROJECT_SOURCE_DIR}/libs/freetype.lib")
+    set(LIB_ZLIB_RELEASE "${PROJECT_SOURCE_DIR}/libs/zlibstatic.lib")
+    set(LIB_ZLIB_DEBUG "${PROJECT_SOURCE_DIR}/libs/debug/zlibstaticd.lib")
 
+    set(LIB_IRRXML_RELEASE "${PROJECT_SOURCE_DIR}/libs/IrrXML.lib")
+    set(LIB_IRRXML_DEBUG "${PROJECT_SOURCE_DIR}/libs/debug/IrrXML.lib")
+    
+    set(LIB_SDL2_RELEASE "${PROJECT_SOURCE_DIR}/libs/SDL2.lib")
+    set(LIB_SDL2_TTF_RELEASE "${PROJECT_SOURCE_DIR}/libs/SDL2_ttf.lib")
+    set(LIB_FREETYPE_RELEASE "${PROJECT_SOURCE_DIR}/libs/freetype.lib")
+else()
+    set(LIB_ASSIMP_RELEASE "${PROJECT_SOURCE_DIR}/libs/libassimp.a")
+    set(LIB_ASSIMP_DEBUG "${PROJECT_SOURCE_DIR}/libs/debug/libassimp.a")
+
+    set(LIB_ZLIB_RELEASE "${PROJECT_SOURCE_DIR}/libs/libzlibstatic.a")
+    set(LIB_ZLIB_DEBUG "${PROJECT_SOURCE_DIR}/libs/debug/libzlibstatic.a")
+
+    set(LIB_IRRXML_RELEASE "${PROJECT_SOURCE_DIR}/libs/libIrrXML.a")
+    set(LIB_IRRXML_DEBUG "${PROJECT_SOURCE_DIR}/libs/debug/libIrrXML.a")
+
+    set(LIB_SDL2_RELEASE "${PROJECT_SOURCE_DIR}/libs/libSDL2.a")
+    set(LIB_SDL2_TTF_RELEASE "${PROJECT_SOURCE_DIR}/libs/libSDL2_ttf.a")
+    set(LIB_FREETYPE_RELEASE "${PROJECT_SOURCE_DIR}/libs/libfreetype.a")
+endif()
 
 # Headers
 set(RASTERATOR_HEADERS "${PROJECT_SOURCE_DIR}/include/application.hpp"
@@ -38,12 +57,12 @@ source_group("Sources" FILES ${RASTERATOR_SOURCES})
 
 add_library(Rasterator ${RASTERATOR_HEADERS} ${RASTERATOR_SOURCES})
 
-# target_link_libraries(Rasterator "${LIB_ASSIMP_RELEASE}")
 target_link_libraries(Rasterator "${LIB_SDL2_RELEASE}")
-target_link_libraries(Rasterator "${LIB_SDL2_MAIN_RELEASE}")
 target_link_libraries(Rasterator "${LIB_SDL2_TTF_RELEASE}")
 target_link_libraries(Rasterator "${LIB_FREETYPE_RELEASE}")
 target_link_libraries(Rasterator debug "${LIB_ASSIMP_DEBUG}" optimized "${LIB_ASSIMP_RELEASE}")
+target_link_libraries(Rasterator debug "${LIB_ZLIB_DEBUG}" optimized "${LIB_ZLIB_RELEASE}")
+target_link_libraries(Rasterator debug "${LIB_IRRXML_DEBUG}" optimized "${LIB_IRRXML_RELEASE}")
 
 if(WIN32)
     target_link_libraries(Rasterator "user32.lib"
