@@ -5,9 +5,9 @@ A C++ software rasterizer created for educational purposes.
 
 * Depth buffering
 * Vertex attribute interpolation
-* Multithreading
-* Texture mapping [TODO]
-* Texture filtering [TODO]
+* Naive multithreading
+* Texture mapping
+* Bilinear texture filtering
 * SSE/AVX [TODO]
 
-## Work-In-Progress
+![Sample](docs/sample.jpg)
