@@ -1,6 +1,4 @@
 #include <SDL.h>
-#include <SDL_ttf.h>
-
 #include <string>
 
 #define RST_DECLARE_MAIN(APP_CLASS) \
@@ -36,18 +34,17 @@ protected:
 	virtual void frame() = 0;
 	virtual void shutdown() = 0;
 	void update_backbuffer(void* pixels);
-	void render_text(const std::string& text, int x, int y);
-    
+
 private:
     bool		  m_is_running;
     SDL_Window*   m_sdl_window;
 	SDL_Renderer* m_sdl_renderer;
 	SDL_Texture*  m_sdl_backbuffer;
-	TTF_Font*	  m_ttf_font;
 	uint32_t	  m_last_delta_time;
 
 protected:
 	float		  m_delta_time;
 	uint32_t	  m_width;
 	uint32_t	  m_height;
+	std::string   m_title;
 };

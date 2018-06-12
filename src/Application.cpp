@@ -9,7 +9,7 @@ Application::Application() : m_is_running(false),
 							 m_width(1280),
 							 m_height(720)
 {
-    printf("Initializing..\n");
+    
 }
 
 Application::~Application()
@@ -49,7 +49,8 @@ void Application::_update_delta_time()
 	m_delta_time = ticks - m_last_delta_time;
 	m_last_delta_time = ticks;
 
-	render_text(std::to_string(m_delta_time) + "ms", 8, 8);
+	std::string msg = m_title + std::to_string(m_delta_time) + "ms";
+	SDL_SetWindowTitle(m_sdl_window, msg.c_str());
 }
 
 void Application::_clear_screen(uint8_t r, uint8_t b, uint8_t g, uint8_t a)
@@ -65,12 +66,14 @@ void Application::_present()
 
 bool Application::_initialize()
 {
+	m_title = "Software Rasterizer | Dihara Wijetunga (c) 2018 | ";
+
     Uint32 flags = SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_HAPTIC | SDL_INIT_JOYSTICK;
     
     if (SDL_Init(flags) != 0)
         return false;
     
-	m_sdl_window = SDL_CreateWindow("Software Rasterizer | Dihara Wijetunga (c) 2018",
+	m_sdl_window = SDL_CreateWindow(m_title.c_str(),
                                SDL_WINDOWPOS_CENTERED,
                                SDL_WINDOWPOS_CENTERED,
 							   m_width,
@@ -81,14 +84,6 @@ bool Application::_initialize()
     
 	m_sdl_renderer = SDL_CreateRenderer(m_sdl_window, -1, SDL_RENDERER_ACCELERATED);
 	m_sdl_backbuffer = SDL_CreateTexture(m_sdl_renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, m_width, m_height);
-
-	TTF_Init();
-    std::string base_path = SDL_GetBasePath();
-    std::string font_path = base_path + "fonts/DroidSans.ttf";
-
-	std::cout << font_path << std::endl;
-
-	m_ttf_font = TTF_OpenFont(font_path.c_str(), 20);
 
 	if (!initialize())
 		return false;
@@ -101,12 +96,10 @@ void Application::_shutdown()
 {
 	shutdown();
 
-	TTF_CloseFont(m_ttf_font);
 	SDL_DestroyTexture(m_sdl_backbuffer);
 	SDL_DestroyRenderer(m_sdl_renderer);
     SDL_DestroyWindow(m_sdl_window);
 
-	TTF_Quit();
 	SDL_Quit();
 }
 
@@ -152,20 +145,6 @@ void Application::_event_loop()
                 break;
         }
     }
-}
-
-void Application::render_text(const std::string& text, int x, int y)
-{
-	SDL_Color color = { 128, 128, 128 };
-	SDL_Surface * surface = TTF_RenderText_Blended(m_ttf_font, text.c_str(), color);
-	SDL_Texture * texture = SDL_CreateTextureFromSurface(m_sdl_renderer, surface);
-	int texW = 0;
-	int texH = 0;
-	SDL_QueryTexture(texture, NULL, NULL, &texW, &texH);
-	SDL_Rect dstrect = { x, y, texW, texH };
-	SDL_RenderCopy(m_sdl_renderer, texture, NULL, &dstrect);
-	SDL_DestroyTexture(texture);
-	SDL_FreeSurface(surface);
 }
 
 void Application::update_backbuffer(void* pixels)
