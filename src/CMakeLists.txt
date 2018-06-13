@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+
 include(FindOpenMP)
 
 if(OPENMP_FOUND)
@@ -38,11 +41,9 @@ add_library(Rasterator ${RASTERATOR_HEADERS} ${RASTERATOR_SOURCES})
 
 if (NOT EMSCRIPTEN)
 	target_link_libraries(Rasterator SDL2-static)
-	target_link_libraries(Rasterator SDL2main)
+    target_link_libraries(Rasterator SDL2main)
+else()    
+    set_target_properties(Rasterator PROPERTIES LINK_FLAGS "-O3 -s WASM=1 -s ALLOW_MEMORY_GROWTH=1 -s USE_SDL=2")
 endif()
 
 target_link_libraries(Rasterator assimp)
-
-if(EMSCRIPTEN)
-    set_target_properties(Rasterator PROPERTIES CMAKE_CXX_FLAGS "-s USE_SDL=2")
-endif()

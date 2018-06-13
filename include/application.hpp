@@ -21,6 +21,9 @@ public:
     int run(int argc, char* argv[]);
     
 private:
+#ifdef __EMSCRIPTEN__
+	static void _main_loop(void* arg);
+#endif
 	void _frame();
     void _event_loop();
 	bool _initialize();
