@@ -2,6 +2,7 @@
 #include <math/vec2.hpp>
 #include <math/mat4.hpp>
 
+#include <memory>
 #include <vector>
 #include <string>
 
@@ -72,21 +73,65 @@ namespace rst
 		vec2f texcoord;
 	};
 
+	struct VertexBuffer
+	{
+		std::vector<Vertex> vertices;
+	};
+
+	struct IndexBuffer
+	{
+		std::vector<uint32_t> indices;
+	};
+
+	struct Material
+	{
+		Texture* diffuse;
+		Texture* normal;
+		Texture* specular;
+
+		Material();
+		~Material();
+	};
+
 	struct SubModel
 	{
-		uint32_t material_index = 0;
 		uint32_t base_index = 0;
-		uint32_t num_indices = 0;
+		uint32_t index_count = 0;
+		uint32_t base_vertex = 0;
+		Material* material;
+
+		SubModel();
+		~SubModel();
 	};
 
 	struct Model
 	{
-		Texture* tex;
-		std::vector<Vertex>   vertices;
-		std::vector<uint32_t> indices;
 		std::vector<SubModel> submodels;
+		std::vector<Material*> materials;
+		VertexBuffer vertex_buffer;
+		IndexBuffer index_buffer;
+
+		Model();
+		~Model();
+	};
+
+	enum TextureType
+	{
+		TEXTURE_DIFFUSE  = 0,
+		TEXTURE_NORMAL   = 1,
+		TEXTURE_SPECULAR = 2
 	};
 
 	extern bool create_model(const std::string& file, Model& model);
-	extern void draw(Model& model, const mat4f& m, const mat4f& v, const mat4f& p, Texture* color, Texture* depth);
+	extern void initialize();
+	extern void set_vertex_buffer(VertexBuffer* vb);
+	extern void set_index_buffer(IndexBuffer* ib);
+	extern void set_render_target(Texture* color, Texture* depth);
+	extern void set_model_matrix(const mat4f& model);
+	extern void set_view_matrix(const mat4f& view);
+	extern void set_projection_matrix(const mat4f& projection);
+	extern void set_texture(const uint32_t& type, Texture* texture);
+	extern void draw(uint32_t first_index, uint32_t count);
+	extern void draw_indexed(uint32_t count);
+	extern void draw_indexed_base_vertex(uint32_t index_count, uint32_t base_index, uint32_t base_vertex);
 }
