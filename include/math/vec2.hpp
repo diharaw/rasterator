@@ -43,6 +43,11 @@ namespace math
 			return vec2(lhs * rhs.x, lhs * rhs.y);
 		}
 
+		friend vec2 operator/(const vec2& lhs, const T& rhs) 
+		{
+			return vec2<T>(lhs.x / rhs, lhs.y / rhs);
+		}
+
 		inline const T& operator[] (unsigned index) const
 		{
 			assert(index < 2);
@@ -53,11 +58,6 @@ namespace math
 		{
 			assert(index < 2);
 			return data[index];
-		}
-
-		inline vec2 operator/(const T& s)
-		{
-			return vec2(x / s, y / s);
 		}
 
 		inline float length() const

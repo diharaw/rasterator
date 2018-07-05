@@ -9,7 +9,7 @@ A Real-time, C++ toy software rasterizer created for understanding the graphics 
 * Near-complete implementation of the graphics pipeline
 * Interactive framerates
 * Depth buffering
-* Vertex attribute interpolation
+* Perspective-correct vertex attribute interpolation
 * OpenMP multithreading
 * Texture mappingk
 * Bilinear texture filtering
@@ -29,7 +29,6 @@ Make sure to have the Emscripten SDK installed. Then use CMake with the Emscript
 NOTE: Emscripten build is pretty slow, so use a lower resolution.
 
 ## Roadmap
-* Light sources
 * SIMD Acceleration (SSE/AVX)
 * Normal mapping
 * Specular mapping

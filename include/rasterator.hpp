@@ -122,10 +122,27 @@ namespace rst
 		TEXTURE_SPECULAR = 2
 	};
 
+	struct DirectionalLight
+	{
+		vec3f direction;
+		vec3f color;
+	};
+
+	struct PointLight
+	{
+		vec3f position;
+		vec3f color;
+		float constant;
+		float linear;
+		float quadratic;
+	};
+
 	extern bool create_model(const std::string& file, Model& model);
 	extern void initialize();
 	extern void set_vertex_buffer(VertexBuffer* vb);
 	extern void set_index_buffer(IndexBuffer* ib);
+	extern void set_directional_lights(uint32_t count, DirectionalLight* lights);
+	extern void set_point_lights(uint32_t count, PointLight* lights);
 	extern void set_render_target(Texture* color, Texture* depth);
 	extern void set_model_matrix(const mat4f& model);
 	extern void set_view_matrix(const mat4f& view);

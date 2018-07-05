@@ -16,14 +16,18 @@
 namespace rst
 {
 	// Global state.
-	VertexBuffer* g_current_vb = nullptr;
-	IndexBuffer*  g_current_ib = nullptr;
-	Texture*	  g_current_color_target = nullptr;
-	Texture*	  g_current_depth_target = nullptr;
-	Texture*	  g_current_textures[3];
-	mat4f		  g_current_model_mat;
-	mat4f		  g_current_view_mat;
-	mat4f		  g_current_projection_mat;
+	VertexBuffer*	  g_current_vb = nullptr;
+	IndexBuffer*	  g_current_ib = nullptr;
+	Texture*		  g_current_color_target = nullptr;
+	Texture*		  g_current_depth_target = nullptr;
+	Texture*		  g_current_textures[3];
+	mat4f			  g_current_model_mat;
+	mat4f			  g_current_view_mat;
+	mat4f			  g_current_projection_mat;
+	uint32_t		  g_dir_light_count = 0;
+	DirectionalLight* g_current_dir_lights = nullptr;
+	uint32_t		  g_point_light_count = 0;
+	PointLight*		  g_current_point_lights = nullptr;
 
 	// -----------------------------------------------------------------------------------------------------------------------------------
 
@@ -46,7 +50,7 @@ namespace rst
 
 	Color Color::operator + (const Color &c) const
 	{
-		return Color(r + c.r, g + c.g, b + c.b, a + c.a);
+        return Color(std::min(255, r + c.r), std::min(255, g + c.g), std::min(255, b + c.b), std::min(255, a + c.a));
 	}
 
 	// -----------------------------------------------------------------------------------------------------------------------------------
@@ -507,17 +511,27 @@ namespace rst
 
 	// -----------------------------------------------------------------------------------------------------------------------------------
 
-	inline void triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, const mat4f& mvp, Texture* color_tex, Texture* depth_tex)
+	inline void triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, const mat4f& vp, Texture* color_tex, Texture* depth_tex)
 	{
 		uint32_t width = color_tex->m_width;
 		uint32_t height = color_tex->m_height;
 
-		// Convert to screen space
-		vec4f v0ndc = mvp * vec4f(v0.position.x, v0.position.y, v0.position.z, 1.0f);
-		vec4f v1ndc = mvp * vec4f(v1.position.x, v1.position.y, v1.position.z, 1.0f);
-		vec4f v2ndc = mvp * vec4f(v2.position.x, v2.position.y, v2.position.z, 1.0f);
+		// Convert to world space 
+		vec4f v0world = g_current_model_mat * vec4f(v0.position.x, v0.position.y, v0.position.z, 1.0f);
+		vec4f v1world = g_current_model_mat * vec4f(v1.position.x, v1.position.y, v1.position.z, 1.0f);
+		vec4f v2world = g_current_model_mat * vec4f(v2.position.x, v2.position.y, v2.position.z, 1.0f);
 
-		// Perspective division
+		// Convert to screen space
+		vec4f v0ndc = vp * v0world;
+		vec4f v1ndc = vp * v1world;
+		vec4f v2ndc = vp * v2world;
+
+		// Keep view space Z around for perspective correct interpolation
+        float v0view_z = v0ndc.w;
+        float v1view_z = v1ndc.w;
+        float v2view_z = v2ndc.w;
+        
+        // Perspective division
 		v0ndc = v0ndc / v0ndc.w;
 		v1ndc = v1ndc / v1ndc.w;
 		v2ndc = v2ndc / v2ndc.w;
@@ -551,10 +565,28 @@ namespace rst
 		bboxmax.y = std::min(clamp.y, std::max(bboxmax.y, v1screen.y));
 		bboxmax.y = std::min(clamp.y, std::max(bboxmax.y, v2screen.y));
 
-		// Triangle area
-		float area = edge_function(v0screen, v1screen, v2screen);
+        // Divide vertex attributes by view space Z for perspective correct interpolation
+        vec2f v0tc = v0.texcoord / v0view_z;
+        vec2f v1tc = v1.texcoord / v1view_z;
+        vec2f v2tc = v2.texcoord / v2view_z;
+        
+        vec3f v0n = v0.normal / v0view_z;
+        vec3f v1n = v1.normal / v1view_z;
+        vec3f v2n = v2.normal / v2view_z;
 
-		vec2f p;
+		vec3f v0w = vec3f(v0world.x, v0world.y, v0world.z) / v0view_z;
+		vec3f v1w = vec3f(v1world.x, v1world.y, v1world.z) / v1view_z;
+		vec3f v2w = vec3f(v2world.x, v2world.y, v2world.z) / v2view_z;
+        
+        // One over view Z
+        v0view_z = 1.0f / v0view_z;
+        v1view_z = 1.0f / v1view_z;
+        v2view_z = 1.0f / v2view_z;
+        
+        // Triangle area
+        float area = edge_function(v0screen, v1screen, v2screen);
+        
+        vec2f p;
 
 		// Iterate over pixels in triangle bounding box
 		for (p.x = bboxmin.x; p.x <= bboxmax.x; p.x++)
@@ -574,7 +606,7 @@ namespace rst
 					w2 /= area;
 
 					// Calculate interpolated pixel depth
-					float z = v0ndc.z * w0 + v1ndc.z * w1 + v2ndc.z *w2;
+					float z = 1.0f / (v0view_z * w0 + v1view_z * w1 + v2view_z * w2);
 
 					// Perform depth test
 					if (z < depth_tex->m_depth[int(p.x + p.y * depth_tex->m_width)])
@@ -582,17 +614,49 @@ namespace rst
 						// Update depth buffer value if depth test is passesd
 						depth_tex->m_depth[int(p.x + p.y * depth_tex->m_width)] = z;
 
-						// Interpolate texture coordinates
-						vec2f texcoord = v0.texcoord * w0 + v1.texcoord * w1 + v2.texcoord * w2;
+						// Interpolate attributes
+						vec2f texcoord = v0tc * w0 + v1tc * w1 + v2tc * w2;
+                        texcoord = texcoord * z;
+                        
+                        vec3f normal = v0n * w0 + v1n * w1 + v2n * w2; 
+                        normal = (normal * z).normalize();
 
-						//std::cout << "[ " << texcoord.x << ", " << texcoord.y << " ]" << std::endl;
+						vec3f world_position = v0w * w0 + v1w * w1 + v2w * w2;
+						world_position = world_position * z;
 
+						// @TODO: Transform normal into world space.
+                        
 						// Fetch texture sample
-						Texture* diffuse = g_current_textures[TEXTURE_DIFFUSE];
-						uint32_t color = diffuse ? diffuse->sample(texcoord.x, texcoord.y) : RST_COLOR_RGBA(1.0f, 1.0f, 1.0f, 1.0f);
+						Texture* diffuse_texture = g_current_textures[TEXTURE_DIFFUSE];
 
+						Color diffuse = diffuse_texture ? diffuse_texture->sample(texcoord.x, texcoord.y) : RST_COLOR_RGBA(1.0f, 1.0f, 1.0f, 1.0f);
+						Color ambient = diffuse * 0.3f;
+
+						Color result = Color(0.0f, 0.0f, 0.0f, 1.0f);
+
+						// Accumulate directional light contribution
+						for (uint32_t i = 0; i < g_dir_light_count; i++)
+						{
+							float lambert = std::max(0.0f, normal.dot(g_current_dir_lights[i].direction * -1.0f));
+							result = result + diffuse * lambert + ambient;
+						}
+
+						// Accumulate directional light contribution
+						for (uint32_t i = 0; i < g_point_light_count; i++)
+						{
+							PointLight& light = g_current_point_lights[i];
+
+							float distance = world_position.distance(light.position);
+							float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+
+							vec3f direction = world_position.direction(light.position);
+
+							float lambert = std::max(0.0f, normal.dot(direction));
+							result = result + diffuse * lambert * attenuation + ambient;
+						}
+		
 						// Write new pixel color
-						color_tex->set_color(color, p.x, p.y);
+						color_tex->set_color(result.pixel, p.x, p.y);
 					}
 				}
 			}
@@ -619,6 +683,38 @@ namespace rst
 	void set_index_buffer(IndexBuffer* ib)
 	{
 		g_current_ib = ib;
+	}
+
+	// -----------------------------------------------------------------------------------------------------------------------------------
+
+	void set_directional_lights(uint32_t count, DirectionalLight* lights)
+	{
+		if (lights)
+		{
+			g_dir_light_count = count;
+			g_current_dir_lights = lights;
+		}		
+		else
+		{
+			g_dir_light_count = 0;
+			g_current_dir_lights = nullptr;
+		}
+	}
+
+	// -----------------------------------------------------------------------------------------------------------------------------------
+
+	void set_point_lights(uint32_t count, PointLight* lights)
+	{
+		if (lights)
+		{
+			g_point_light_count = count;
+			g_current_point_lights = lights;
+		}
+		else
+		{
+			g_point_light_count = 0;
+			g_current_point_lights = nullptr;
+		}
 	}
 
 	// -----------------------------------------------------------------------------------------------------------------------------------
@@ -677,14 +773,14 @@ namespace rst
 		std::vector<Vertex>& vertices = g_current_vb->vertices;
 
 		// Compute MVP matrix.
-		mat4f mvp = g_current_projection_mat * g_current_view_mat * g_current_model_mat;
+		mat4f vp = g_current_projection_mat * g_current_view_mat;
 		
 		// Iterate over vertices.
 		#pragma omp parallel for
 		for (int i = 0; i < count; i += 3)
 		{
 			// Rasterize triangle.
-			triangle(vertices[first_index + i], vertices[first_index + i + 1], vertices[first_index + i + 2], mvp, g_current_color_target, g_current_depth_target);
+			triangle(vertices[first_index + i], vertices[first_index + i + 1], vertices[first_index + i + 2], vp, g_current_color_target, g_current_depth_target);
 		}
 	}
 
@@ -709,14 +805,14 @@ namespace rst
 		std::vector<Vertex>& vertices = g_current_vb->vertices;
 
 		// Compute MVP matrix.
-		mat4f mvp = g_current_projection_mat * g_current_view_mat * g_current_model_mat;
+		mat4f vp = g_current_projection_mat * g_current_view_mat;
 
 		// Iterate over vertices,
 		#pragma omp parallel for
 		for (int i = 0; i < count; i += 3)
 		{
 			// Rasterize triangle.
-			triangle(vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], mvp, g_current_color_target, g_current_depth_target);
+			triangle(vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], vp, g_current_color_target, g_current_depth_target);
 		}
 	}
 
@@ -741,14 +837,14 @@ namespace rst
 		std::vector<Vertex>& vertices = g_current_vb->vertices;
 
 		// Compute MVP matrix.
-		mat4f mvp = g_current_projection_mat * g_current_view_mat * g_current_model_mat;
+		mat4f vp = g_current_projection_mat * g_current_view_mat;
 
 		// Iterate over vertices.
 		#pragma omp parallel for
 		for (int i = 0; i < index_count; i += 3)
 		{
 			// Rasterize triangle.
-			triangle(vertices[base_vertex + indices[base_index + i]], vertices[base_vertex + indices[base_index + i + 1]], vertices[base_vertex + indices[base_index + i + 2]], mvp, g_current_color_target, g_current_depth_target);
+			triangle(vertices[base_vertex + indices[base_index + i]], vertices[base_vertex + indices[base_index + i + 1]], vertices[base_vertex + indices[base_index + i + 2]], vp, g_current_color_target, g_current_depth_target);
 		}
 	}
 

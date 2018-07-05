@@ -18,6 +18,8 @@ class Demo : public Application
 	vec3f m_position;
 	vec3f m_direction;
 
+	rst::DirectionalLight m_dir_light;
+	rst::PointLight m_point_light;
 	rst::Model m_obj_model;
 	std::unique_ptr<rst::Texture> m_color_tex;
 	std::unique_ptr<rst::Texture> m_depth_tex;
@@ -46,6 +48,15 @@ protected:
 
 		rst::initialize();
 
+		m_dir_light.color = vec3f(1.0f, 1.0f, 1.0f);
+		m_dir_light.direction = vec3f(1.0f, -1.0f, 0.0f).normalize();
+
+		m_point_light.color = vec3f(1.0f, 1.0f, 1.0f);
+		m_point_light.position = vec3f(0.0f, 0.0f, 150.0f);
+		m_point_light.constant = 1.0f;
+		m_point_light.linear = 0.0014;
+		m_point_light.quadratic = 0.000007;
+
 		return true;
 	}
 
@@ -54,10 +65,10 @@ protected:
 		m_depth_tex->clear();
 		m_color_tex->clear(0.0f, 0.0f, 0.0f, 1.0f);
 
-		vec3f light_dir = vec3f(0.0f, 0.0f, -1.0f);
-		light_dir.normalize();
-
 		m_model = rotation(radians(SDL_GetTicks() * 0.05f), vec3f(0.0f, 1.0f, 0.0f));
+
+		// Set lights
+		rst::set_directional_lights(1, &m_dir_light);
 
 		// Set render targets
 		rst::set_render_target(m_color_tex.get(), m_depth_tex.get());
