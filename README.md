@@ -11,7 +11,7 @@ A Real-time, C++ toy software rasterizer created for understanding the graphics 
 * Depth buffering
 * Perspective-correct vertex attribute interpolation
 * OpenMP multithreading
-* Texture mappingk
+* Texture mapping
 * Bilinear texture filtering
 * Cross platform (Windows, macOS, Linux, Emscripten)
 
