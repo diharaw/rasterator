@@ -1,6 +1,6 @@
-# Rasterator
-
 [![License: MIT](https://img.shields.io/packagist/l/doctrine/orm.svg)](https://opensource.org/licenses/MIT)
+
+# Rasterator
 
 ## What is it?
 A Real-time, C++ toy software rasterizer created for understanding the graphics pipeline.
